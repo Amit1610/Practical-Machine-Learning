@@ -1,0 +1,165 @@
+---
+title: 'Peer-graded Assignment: Prediction Assignment Writeup'
+author: "Amit Kumar"
+date: "June 16, 2017"
+output:
+  html_document: default
+  pdf_document: default
+css: style.css
+---
+# 1. Overview: 
+
+This document is my submission report for the Peer Assessment project from Coursera course "Practical Machine Learning" as a part of the Specialization in Data Science. It is prepared in RStudio, using its knitr functions, meant to be published in .Rmd and and compiled HTML file. 
+
+The objective of the project is to predict the manner in which 6 participants performed the exercise. This is the "classe" variable in the training set. The machine learning algorithm (prediction model) is also used to predict 20 different test cases.
+
+# 2. Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement. A group of enthusiasts have ake measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+
+In this project, my goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+# 3. Data
+
+The training data for this project were available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data were available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. They have been very generous in allowing their data to be used for this kind of assignments. Thanks. 
+
+## 3.1 Preparing Environment 
+I first upload the R libraries that are necessary for the complete analysis.
+
+```{r}
+getwd()
+setwd("C:/Coursera/Machine Learning")
+library(caret); 
+library(rpart);
+library(ggplot2);
+library(randomForest)
+library(corrplot)
+```
+
+## 3.2 Loading Data
+
+```{r}
+url.train <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+url.test <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+training <- read.csv(url(url.train), na.strings = c("NA", "", "#DIV0!"))
+testing <- read.csv(url(url.test), na.strings = c("NA", "", "#DIV0!"))
+```
+
+## 3.3 Cleaning Data
+
+```{r}
+training<-training[,colSums(is.na(training)) == 0]
+testing <-testing[,colSums(is.na(testing)) == 0]
+```
+
+## 3.4 Checking the column names of traning dataset
+
+```{r}
+head(colnames(training))
+```
+
+The first 7 variables of the training data are irrelevant to the prediction and hence deleted. 
+
+```{r}
+training <- training[,8:dim(training)[2]]
+testing <- testing[,8:dim(testing)[2]]
+```
+
+## 3.5 Training, testing & validation data:
+
+The training dataset is separated into three parts: tranining part (60%), testing part (20%), and validation part (20%)
+
+```{r}
+set.seed(123)
+Seeddata1 <- createDataPartition(y = training$classe, p = 0.8, list = F)
+Seeddata2 <- training[Seeddata1,]
+validation <- training[-Seeddata1,]
+Training_data1 <- createDataPartition(y = Seeddata2$classe, p = 0.75, list = F)
+training_data2 <- Seeddata2[Training_data1,]
+testing_data <- Seeddata2[-Training_data1,]
+```
+
+# 4.Exploratory Data Analysis: 
+
+## 4.1 Checking Distribution for Classes: 
+
+```{r}
+qplot(classe, fill = "7", data=training_data2, main="Distribution of Classes")
+```
+
+
+## 4.2.Correlation Analysis: 
+
+A correlation among variables is analysed before proceeding to the modeling procedures.
+
+```{r}
+corMatrix <- cor(training_data2[, -53])
+corrplot(corMatrix, order = "FPC", method = "color", type = "lower", 
+         tl.cex = 0.8, tl.col = rgb(0, 0, 0))
+
+```
+
+
+# 5. Model Building:
+
+## 5.1 Finding out the predictors: 
+
+```{r}
+names(training_data2[,-53])
+```
+
+## 5.2 Prediction Model (Classification Tree model): 
+
+```{r}
+model_tree <- rpart(classe ~ ., data=training_data2, method="class")
+prediction_tree <- predict(model_tree, testing_data, type="class")
+class_tree <- confusionMatrix(prediction_tree, testing_data$classe)
+class_tree
+```
+
+## 5.3 Checking The Tree Model
+
+```{r}
+library(rpart.plot)
+rpart.plot(model_tree)
+```
+
+## 5.4 Random Forest Model:
+
+```{r}
+forest_model <- randomForest(classe ~ ., data=training_data2, method="class")
+prediction_forest <- predict(forest_model, testing_data, type="class")
+random_forest <- confusionMatrix(prediction_forest, testing_data$classe)
+random_forest
+```
+
+## 5.5 Final prediction
+
+Prediction Algorithm and Confusion Matrix
+
+```{r}
+prediction1 <- predict(forest_model, newdata=testing_data)
+confusionMatrix(prediction1, testing_data$classe)
+```
+
+The Random Forest is a much better predictive model than the Decision Tree, which has a larger accuracy (99.91%).Therefore, we don't need to consider more important predictors for the Random Forest model. 
+
+# 6. Conclusions
+In this study, the characteristics of predictors for both traning and testing datasets (train and test) are reduced. These characteristics are the percentage of NAs values, low variance, correlation and skewness. Therefore, the variables of the data sets are scaled. The training dataset is splitted into subtraining and validation parts to construct a predictive model and evaluate its accuracy. Decision Tree and Random Forest are applied.The Random Forest is a much better predictive model than the Decision Tree, which has a larger accuracy (99.91%).
+
+# 7. Reproducibility: 
+This project is reproducible and was done with the following environment:
+
+```{r}
+sessionInfo()
+```
+
